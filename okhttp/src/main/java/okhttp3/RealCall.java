@@ -18,6 +18,7 @@ package okhttp3;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import okhttp3.internal.CallEventListener;
 import okhttp3.internal.NamedRunnable;
 import okhttp3.internal.cache.CacheInterceptor;
 import okhttp3.internal.connection.ConnectInterceptor;
@@ -33,7 +34,12 @@ import static okhttp3.internal.platform.Platform.INFO;
 final class RealCall implements Call {
   final OkHttpClient client;
   final RetryAndFollowUpInterceptor retryAndFollowUpInterceptor;
-  final EventListener eventListener;
+
+  /**
+   * There is a cycle between the Call and EventListener that makes this awkward. This will be set
+   * after we create the call instance then create the event listener instance.
+   */
+  EventListener eventListener;
 
   /** The application's original request unadulterated by redirects or auth headers. */
   final Request originalRequest;
@@ -43,15 +49,17 @@ final class RealCall implements Call {
   private boolean executed;
 
   RealCall(OkHttpClient client, Request originalRequest, boolean forWebSocket) {
-    final EventListener.Factory eventListenerFactory = client.eventListenerFactory();
-
     this.client = client;
     this.originalRequest = originalRequest;
     this.forWebSocket = forWebSocket;
     this.retryAndFollowUpInterceptor = new RetryAndFollowUpInterceptor(client, forWebSocket);
+  }
 
-    // TODO(jwilson): this is unsafe publication and not threadsafe.
-    this.eventListener = eventListenerFactory.create(this);
+  static RealCall newRealCall(OkHttpClient client, Request originalRequest, boolean forWebSocket) {
+    // Safely publish the Call instance to the EventListener.
+    RealCall call = new RealCall(client, originalRequest, forWebSocket);
+    call.eventListener = client.eventListenerFactory().create(call);
+    return call;
   }
 
   @Override public Request request() {
@@ -102,7 +110,7 @@ final class RealCall implements Call {
 
   @SuppressWarnings("CloneDoesntCallSuperClone") // We are a final type & this saves clearing state.
   @Override public RealCall clone() {
-    return new RealCall(client, originalRequest, forWebSocket);
+    return RealCall.newRealCall(client, originalRequest, forWebSocket);
   }
 
   StreamAllocation streamAllocation() {
@@ -180,8 +188,9 @@ final class RealCall implements Call {
     }
     interceptors.add(new CallServerInterceptor(forWebSocket));
 
+    CallEventListener callEventListener = new CallEventListener(this, eventListener);
     Interceptor.Chain chain = new RealInterceptorChain(
-        interceptors, null, null, null, 0, originalRequest);
+        interceptors, null, null, null, 0, originalRequest, callEventListener);
     return chain.proceed(originalRequest);
   }
 }

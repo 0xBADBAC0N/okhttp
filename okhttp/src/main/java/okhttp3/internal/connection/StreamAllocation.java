@@ -23,6 +23,7 @@ import okhttp3.Address;
 import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
 import okhttp3.Route;
+import okhttp3.internal.CallEventListener;
 import okhttp3.internal.Internal;
 import okhttp3.internal.Util;
 import okhttp3.internal.http.HttpCodec;
@@ -83,10 +84,11 @@ public final class StreamAllocation {
   private boolean canceled;
   private HttpCodec codec;
 
-  public StreamAllocation(ConnectionPool connectionPool, Address address, Object callStackTrace) {
+  public StreamAllocation(ConnectionPool connectionPool, Address address,
+      CallEventListener callEventListener, Object callStackTrace) {
     this.connectionPool = connectionPool;
     this.address = address;
-    this.routeSelector = new RouteSelector(address, routeDatabase());
+    this.routeSelector = new RouteSelector(address, routeDatabase(), callEventListener);
     this.callStackTrace = callStackTrace;
   }
 

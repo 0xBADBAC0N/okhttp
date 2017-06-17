@@ -21,6 +21,7 @@ import okhttp3.Connection;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.internal.CallEventListener;
 import okhttp3.internal.connection.RealConnection;
 import okhttp3.internal.connection.StreamAllocation;
 
@@ -35,16 +36,19 @@ public final class RealInterceptorChain implements Interceptor.Chain {
   private final RealConnection connection;
   private final int index;
   private final Request request;
+  private final CallEventListener callEventListener;
   private int calls;
 
   public RealInterceptorChain(List<Interceptor> interceptors, StreamAllocation streamAllocation,
-      HttpCodec httpCodec, RealConnection connection, int index, Request request) {
+      HttpCodec httpCodec, RealConnection connection, int index, Request request,
+      CallEventListener callEventListener) {
     this.interceptors = interceptors;
     this.connection = connection;
     this.streamAllocation = streamAllocation;
     this.httpCodec = httpCodec;
     this.index = index;
     this.request = request;
+    this.callEventListener = callEventListener;
   }
 
   @Override public Connection connection() {
@@ -57,6 +61,10 @@ public final class RealInterceptorChain implements Interceptor.Chain {
 
   public HttpCodec httpStream() {
     return httpCodec;
+  }
+
+  public CallEventListener eventListener() {
+    return callEventListener;
   }
 
   @Override public Request request() {
@@ -86,8 +94,8 @@ public final class RealInterceptorChain implements Interceptor.Chain {
     }
 
     // Call the next interceptor in the chain.
-    RealInterceptorChain next = new RealInterceptorChain(
-        interceptors, streamAllocation, httpCodec, connection, index + 1, request);
+    RealInterceptorChain next = new RealInterceptorChain(interceptors, streamAllocation, httpCodec,
+        connection, index + 1, request, callEventListener);
     Interceptor interceptor = interceptors.get(index);
     Response response = interceptor.intercept(next);
 

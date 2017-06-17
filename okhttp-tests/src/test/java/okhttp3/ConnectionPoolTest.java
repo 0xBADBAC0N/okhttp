@@ -22,6 +22,7 @@ import java.net.Socket;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import javax.net.SocketFactory;
+import okhttp3.internal.CallEventListener;
 import okhttp3.internal.Internal;
 import okhttp3.internal.RecordingOkAuthenticator;
 import okhttp3.internal.connection.RealConnection;
@@ -83,7 +84,8 @@ public final class ConnectionPoolTest {
 
     RealConnection c1 = newConnection(pool, routeA1, 50L);
     synchronized (pool) {
-      StreamAllocation streamAllocation = new StreamAllocation(pool, addressA, null);
+      StreamAllocation streamAllocation = new StreamAllocation(pool, addressA,
+          CallEventListener.NONE, null);
       streamAllocation.acquire(c1);
     }
 
@@ -176,7 +178,8 @@ public final class ConnectionPoolTest {
   /** Use a helper method so there's no hidden reference remaining on the stack. */
   private void allocateAndLeakAllocation(ConnectionPool pool, RealConnection connection) {
     synchronized (pool) {
-      StreamAllocation leak = new StreamAllocation(pool, connection.route().address(), null);
+      StreamAllocation leak = new StreamAllocation(pool, connection.route().address(),
+          CallEventListener.NONE, null);
       leak.acquire(connection);
     }
   }

@@ -36,6 +36,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.Route;
+import okhttp3.internal.CallEventListener;
 import okhttp3.internal.connection.RouteException;
 import okhttp3.internal.connection.StreamAllocation;
 import okhttp3.internal.http2.ConnectionShutdownException;
@@ -102,9 +103,10 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
 
   @Override public Response intercept(Chain chain) throws IOException {
     Request request = chain.request();
+    CallEventListener callEventListener = ((RealInterceptorChain) chain).eventListener();
 
     streamAllocation = new StreamAllocation(
-        client.connectionPool(), createAddress(request.url()), callStackTrace);
+        client.connectionPool(), createAddress(request.url()), callEventListener, callStackTrace);
 
     int followUpCount = 0;
     Response priorResponse = null;
@@ -172,8 +174,8 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
 
       if (!sameConnection(response, followUp.url())) {
         streamAllocation.release();
-        streamAllocation = new StreamAllocation(
-            client.connectionPool(), createAddress(followUp.url()), callStackTrace);
+        streamAllocation = new StreamAllocation(client.connectionPool(),
+            createAddress(followUp.url()), callEventListener, callStackTrace);
       } else if (streamAllocation.codec() != null) {
         throw new IllegalStateException("Closing the body of " + response
             + " didn't close its backing stream. Bad interceptor?");

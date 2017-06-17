@@ -17,9 +17,9 @@ package okhttp3;
 
 import java.net.InetAddress;
 import java.util.List;
+import javax.annotation.Nullable;
 
-// TODO(jwilson): make this public after the 3.8 release.
-abstract class EventListener {
+public abstract class EventListener {
   public static final EventListener NONE = new EventListener() {
   };
 
@@ -38,7 +38,7 @@ abstract class EventListener {
   }
 
   public void dnsEnd(Call call, String domainName, List<InetAddress> inetAddressList,
-      Throwable throwable) {
+      @Nullable Throwable throwable) {
   }
 
   public void connectStart(Call call, InetAddress address, int port) {
